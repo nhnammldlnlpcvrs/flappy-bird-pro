@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  overflow: hidden;
+  height: 100%;
+  background: #000;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+#game-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#game-container canvas {
+  display: block;
+}
+
+.game-ui {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.game-ui button {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.score-text {
+  text-shadow: 3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000;
+}
+
+.btn {
+  padding: 0.75rem 2rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  border: none;
+  transition: transform 0.1s, box-shadow 0.1s, background 0.15s;
+  font-size: 1.125rem;
+  outline: none;
+}
+
+.btn:active {
+  transform: scale(0.95);
+}
+
+.btn-start {
+  background: #FACC15;
+  color: #1a1a1a;
+  box-shadow: 0 4px 0 0 #B8860B;
+}
+
+.btn-start:hover {
+  background: #FDE047;
+}
+
+.btn-restart {
+  background: #22C55E;
+  color: #fff;
+  box-shadow: 0 4px 0 0 #15803D;
+}
+
+.btn-restart:hover {
+  background: #4ADE80;
+}
