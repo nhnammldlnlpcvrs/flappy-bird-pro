@@ -22,34 +22,40 @@ npm run preview   # preview production build locally
 
 ## Controls
 
-| Action | Input |
-|--------|-------|
-| Flap   | Click / Tap / Spacebar |
-| Start  | Click "Start Game" button |
+| Action  | Input                        |
+| ------- | ---------------------------- |
+| Flap    | Click / Tap / Spacebar       |
+| Start   | Click "Start Game" button    |
 | Restart | Click "Play Again" after game over |
 
-## Deploy to Vercel
+## Deployment
 
-1. Push this repo to GitHub:
+### Vercel (recommended)
 
-   ```bash
-   git init
-   git add -A
-   git commit -m "Initial commit: Flappy Bird Pro"
-   git branch -M main
-   git remote add origin https://github.com/YOUR_USER/flappy-bird-pro.git
-   git push -u origin main
-   ```
+**Option A — Git-based (automatic deploys)**
 
+1. Push this repo to GitHub.
 2. Go to [vercel.com/new](https://vercel.com/new) and import the repository.
-3. Vercel auto-detects Vite — no extra config needed.
-4. Click **Deploy**.
+3. Vercel auto-detects Vite — no extra config needed (the `vercel.json` ensures SPA rewrites work).
+4. Every push to `main` triggers a new deployment automatically.
 
-Or deploy from the CLI:
+**Option B — Vercel CLI (manual deploys)**
 
 ```bash
-npx vercel --prod
+# Install the CLI
+npm i -g vercel
+
+# Deploy
+vercel          # preview deploy
+vercel --prod   # production deploy
+
+# Or use the npm script
+npm run deploy
 ```
+
+### GitHub Actions CI
+
+On every push to `main`, the workflow in `.github/workflows/deploy.yml` runs `npm ci` and `npm run build` to catch build errors before they reach production.
 
 ## Stack
 
@@ -58,6 +64,18 @@ npx vercel --prod
 - **Tailwind CSS v4** — utility-first CSS for UI overlays
 - **No external assets** — everything is drawn with Canvas graphics
 
-## License
+## Project Structure
 
-MIT
+```
+├── .github/workflows/deploy.yml   # CI workflow
+├── index.html                     # Game UI overlays
+├── package.json
+├── vercel.json                    # Vercel config (SPA rewrites)
+├── vite.config.js                 # Vite + Tailwind plugin
+├── public/assets/                 # Empty — no external images
+└── src/
+    ├── main.js                    # Phaser init, UI wiring
+    ├── style.css                  # Tailwind v4 + custom styles
+    └── game/
+        └── GameScene.js           # Bird, pipes, collisions, scoring
+```
