@@ -5,11 +5,11 @@ const BOARD_H = 640;
 const GROUND_H = 80;
 const PIPE_WIDTH = 64;
 const PIPE_HEIGHT = 512;
-const PIPE_GAP = BOARD_H / 4; // 160 — matches docs openingSpace
-const PIPE_SPEED = -120; // -2 px/frame at 60fps
-const GRAVITY = 1400; // matches docs: gravity=0.4/frame at 60fps ≈ 1464px/s²
-const FLAP_VELOCITY = -360;
-const BIRD_X = BOARD_W / 8; // 45 — matches docs
+const PIPE_GAP = BOARD_H / 4; // 160 — matches archive openingSpace
+const PIPE_SPEED = -120;      // archive: velocityX = -2 px/frame at 60fps
+const GRAVITY = 1440;         // archive: gravity = 0.4 px/frame² → 1440 px/s²
+const FLAP_VELOCITY = -360;   // archive: velocityY = -6 px/frame at 60fps
+const BIRD_X = BOARD_W / 8;   // 45 — matches archive
 const PIPE_SPAWN_MS = 1500;
 
 export class GameScene extends Phaser.Scene {
@@ -22,19 +22,23 @@ export class GameScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════
 
   preload() {
-    // Bird — legacy flappybird.png + animated frames (enhancement)
-    this.load.image('bird', 'assets/flappybird.png');
+    // Bird frames
     this.load.image('bird0', 'assets/flappybird0.png');
     this.load.image('bird1', 'assets/flappybird1.png');
     this.load.image('bird2', 'assets/flappybird2.png');
     this.load.image('bird3', 'assets/flappybird3.png');
-    // Pipes — toppipe.png not in assets; bottompipe.png flipped for top
-    this.load.image('pipeTop', 'assets/bottompipe.png');
+    // Pipes — separate images as in archive
+    this.load.image('pipeTop', 'assets/toppipe.png');
     this.load.image('pipeBottom', 'assets/bottompipe.png');
     // Background
     this.load.image('background', 'assets/flappybirdbg.png');
-    // BGM
+    // Audio — BGM
     this.load.audio('bgm', 'assets/bgm_mario.mp3');
+    // Audio — SFX (WAV files from archive)
+    this.load.audio('sfxFlap', 'assets/sfx_swooshing.wav');
+    this.load.audio('sfxScore', 'assets/sfx_point.wav');
+    this.load.audio('sfxHit', 'assets/sfx_hit.wav');
+    this.load.audio('sfxDie', 'assets/sfx_die.wav');
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -47,8 +51,14 @@ export class GameScene extends Phaser.Scene {
     this.bg.setDisplaySize(BOARD_W, BOARD_H);
     this.bg.setDepth(0);
 
-    // Ground scroll tile — generate from pipe texture bottom section
-    this.createGround();
+    // Ground scroll tile
+    this.groundTile = this.add.tileSprite(
+      BOARD_W / 2, BOARD_H - GROUND_H / 2,
+      BOARD_W, GROUND_H,
+      'pipeBottom'
+    );
+    this.groundTile.setDisplaySize(BOARD_W, GROUND_H);
+    this.groundTile.setDepth(2);
 
     // Bird
     this.birdFrames = ['bird0', 'bird1', 'bird2', 'bird3'];
@@ -58,7 +68,7 @@ export class GameScene extends Phaser.Scene {
     this.bird.setDisplaySize(34, 24);
     this.bird.setDepth(3);
     this.bird.setCollideWorldBounds(false);
-    this.bird.body.setSize(34, 24);    // legacy: birdWidth=34, birdHeight=24
+    this.bird.body.setSize(34, 24);
     this.bird.body.setOffset(
       (this.bird.width - 34) / 2,
       (this.bird.height - 24) / 2
@@ -71,10 +81,13 @@ export class GameScene extends Phaser.Scene {
     // Audio — BGM
     this.bgm = this.sound.add('bgm', { loop: true, volume: 0.25 });
 
-    // SFX generated via Web Audio
-    this.sfx = this.createSFX();
+    // Audio — SFX (loaded WAV files from archive)
+    this.sfxFlap = this.sound.add('sfxFlap', { volume: 0.3 });
+    this.sfxScore = this.sound.add('sfxScore', { volume: 0.35 });
+    this.sfxHit = this.sound.add('sfxHit', { volume: 0.4 });
+    this.sfxDie = this.sound.add('sfxDie', { volume: 0.4 });
 
-    // Input
+    // Input — matches archive: Space, ArrowUp, KeyX
     this.input.on('pointerdown', () => this.handleInput());
     this.input.keyboard.on('keydown-SPACE', () => this.handleInput());
     this.input.keyboard.on('keydown-UP', () => this.handleInput());
@@ -87,162 +100,31 @@ export class GameScene extends Phaser.Scene {
 
     this.game.events.on('start-game', () => this.startGame());
 
-    // Pre-game idle animation
-    this.preGameBob();
+    // Pre-game idle bobbing animation
+    this.bobTween = this.tweens.add({
+      targets: this.bird,
+      y: this.bird.y + 10,
+      duration: 700,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  //  GROUND
-  // ═══════════════════════════════════════════════════════════════════
-
-  createGround() {
-    this.groundTile = this.add.tileSprite(
-      BOARD_W / 2, BOARD_H - GROUND_H / 2,
-      BOARD_W, GROUND_H,
-      'pipeBottom'
-    );
-    this.groundTile.setDisplaySize(BOARD_W, GROUND_H);
-    this.groundTile.setDepth(2);
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  //  SOUND EFFECTS (generated)
-  // ═══════════════════════════════════════════════════════════════════
-
-  createSFX() {
-    const ctx = this.sound.context;
-    if (!ctx) return {};
-
-    // ── 8-bit sound engine ──────────────────────────────────────────
-
-    const play8Bit = (config) => {
-      try {
-        const t = ctx.currentTime;
-        const masterGain = ctx.createGain();
-        masterGain.gain.setValueAtTime(config.vol || 0.1, t);
-        masterGain.connect(ctx.destination);
-
-        // Square channel (pulse wave — the heart of 8-bit)
-        if (config.square) {
-          const osc = ctx.createOscillator();
-          osc.type = 'square';
-          const gain = ctx.createGain();
-          gain.gain.setValueAtTime(1, t);
-          config.square.forEach(note => {
-            osc.frequency.setValueAtTime(note.freq, t + note.at);
-            if (note.rampTo) {
-              osc.frequency.linearRampToValueAtTime(note.rampTo, t + note.rampAt);
-            }
-          });
-          gain.gain.setValueAtTime(1, t);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + config.duration);
-          osc.connect(gain);
-          gain.connect(masterGain);
-          osc.start(t);
-          osc.stop(t + config.duration + 0.05);
-        }
-
-        // Triangle channel (bass body)
-        if (config.triangle) {
-          const osc = ctx.createOscillator();
-          osc.type = 'triangle';
-          const gain = ctx.createGain();
-          gain.gain.setValueAtTime(0.6, t);
-          config.triangle.forEach(note => {
-            osc.frequency.setValueAtTime(note.freq, t + note.at);
-          });
-          gain.gain.exponentialRampToValueAtTime(0.001, t + config.duration * 0.7);
-          osc.connect(gain);
-          gain.connect(masterGain);
-          osc.start(t);
-          osc.stop(t + config.duration + 0.05);
-        }
-
-        // Noise channel (percussion / explosion)
-        if (config.noiseDuration) {
-          const bufferSize = ctx.sampleRate * config.noiseDuration;
-          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-          const data = buffer.getChannelData(0);
-          for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1) * 0.3;
-          }
-          const noise = ctx.createBufferSource();
-          noise.buffer = buffer;
-          const noiseGain = ctx.createGain();
-          noiseGain.gain.setValueAtTime(0.5, t);
-          noiseGain.gain.exponentialRampToValueAtTime(0.001, t + config.noiseDuration);
-          const noiseFilter = ctx.createBiquadFilter();
-          noiseFilter.type = 'highpass';
-          noiseFilter.frequency.setValueAtTime(800, t);
-          noiseFilter.frequency.exponentialRampToValueAtTime(200, t + config.noiseDuration);
-          noise.connect(noiseFilter);
-          noiseFilter.connect(noiseGain);
-          noiseGain.connect(masterGain);
-          noise.start(t);
-          noise.stop(t + config.noiseDuration + 0.05);
-        }
-      } catch (_) { /* audio unavailable */ }
-    };
-
-    // ── SFX definitions ─────────────────────────────────────────────
-
-    return {
-      // Classic NES-style jump "boop" — quick upward sweep
-      flap: () => play8Bit({
-        vol: 0.09,
-        duration: 0.1,
-        square: [
-          { freq: 350, at: 0, rampTo: 700, rampAt: 0.08 },
-        ],
-        triangle: [
-          { freq: 175, at: 0 },
-        ],
-      }),
-
-      // Mario-style coin "bling" — two bright arpeggiated notes
-      score: () => play8Bit({
-        vol: 0.1,
-        duration: 0.18,
-        square: [
-          { freq: 988, at: 0 },       // B5
-          { freq: 1319, at: 0.07 },   // E6
-        ],
-        triangle: [
-          { freq: 659, at: 0 },       // E5
-          { freq: 988, at: 0.07 },    // B5
-        ],
-      }),
-
-      // NES death "bzzzt-descend" — pitch crash + noise burst
-      hit: () => play8Bit({
-        vol: 0.12,
-        duration: 0.45,
-        noiseDuration: 0.25,
-        square: [
-          { freq: 600, at: 0, rampTo: 80, rampAt: 0.35 },
-        ],
-        triangle: [
-          { freq: 300, at: 0, rampTo: 40, rampAt: 0.3 },
-        ],
-      }),
-    };
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  //  INPUT
+  //  INPUT — matches archive moveBird()
   // ═══════════════════════════════════════════════════════════════════
 
   handleInput() {
     if (this.isGameOver) {
-      // Reset on any key when game over — matches docs behaviour
+      // Reset on any input when game over — matches archive
       this.game.events.emit('restart-game');
       return;
     }
 
     if (!this.isPlaying) {
-      // First tap starts the game
+      // First input starts the game and applies a flap
       this.game.events.emit('start-game');
-      // Apply the flap immediately
       this.time.delayedCall(50, () => this.flap());
       return;
     }
@@ -253,12 +135,13 @@ export class GameScene extends Phaser.Scene {
   flap() {
     if (!this.isPlaying || this.isGameOver) return;
 
+    // archive: velocityY = -6
     this.bird.body.setVelocityY(FLAP_VELOCITY);
 
-    // Flap SFX
-    if (this.sfx.flap) this.sfx.flap();
+    // Flap SFX — archive swooshing sound
+    if (this.sfxFlap) this.sfxFlap.play();
 
-    // Visual squash
+    // Visual squash/stretch
     this.tweens.add({
       targets: this.bird,
       scaleY: 0.65,
@@ -277,12 +160,12 @@ export class GameScene extends Phaser.Scene {
     this.isPlaying = true;
     this.isGameOver = false;
 
-    // Cancel pending game-over modal if player restarted before it fired
     if (this.gameOverTimer) {
       this.gameOverTimer.remove();
       this.gameOverTimer = null;
     }
 
+    // archive: bird.y = birdY (boardHeight/2)
     this.bird.setPosition(BIRD_X, BOARD_H / 2);
     this.bird.setAngle(0);
     this.bird.clearTint();
@@ -312,8 +195,12 @@ export class GameScene extends Phaser.Scene {
     this.bird.body.allowGravity = false;
     this.bird.body.setVelocity(0, 0);
 
-    // Hit SFX
-    if (this.sfx.hit) this.sfx.hit();
+    // Hit SFX — archive die sound
+    if (this.sfxHit) this.sfxHit.play();
+    // Death sound
+    if (this.sfxDie) {
+      this.time.delayedCall(80, () => { if (this.sfxDie) this.sfxDie.play(); });
+    }
 
     if (this.bgm && this.bgm.isPlaying) this.bgm.stop();
 
@@ -333,67 +220,52 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  //  PIPE SPAWNING  (matches docs placePipes logic)
+  //  PIPE SPAWNING — matches archive placePipes()
   // ═══════════════════════════════════════════════════════════════════
 
   spawnPipePair() {
-    // randomPipeY = pipeY - pipeHeight/4 - Math.random()*(pipeHeight/2)
+    // archive: randomPipeY = pipeY - pipeHeight/4 - Math.random()*(pipeHeight/2)
     // pipeY = 0 at top, pipeHeight = 512
-    // Range: -128 to -384  (so top pipe extends off-screen at top)
+    // Range: -128 (pipeHeight/4) to -384 (pipeHeight/4 + pipeHeight/2)
     const randomPipeY = -PIPE_HEIGHT / 4 - Math.random() * (PIPE_HEIGHT / 2);
-    const openingSpace = PIPE_GAP; // 160
+    const openingSpace = PIPE_GAP; // 160 — archive: board.height/4
 
-    // Top pipe — flipped bottompipe.png, extends upward
+    // Top pipe — uses toppipe.png from archive, origin at bottom so it extends upward
     const topPipe = this.pipes.create(BOARD_W + 40, randomPipeY, 'pipeTop');
     topPipe.setOrigin(0.5, 1);
-    topPipe.setFlipY(true);
     topPipe.setDisplaySize(PIPE_WIDTH, PIPE_HEIGHT);
-    topPipe.body.setSize(PIPE_WIDTH, PIPE_HEIGHT);    // legacy: pipeWidth=64, pipeHeight=512
+    topPipe.body.setSize(PIPE_WIDTH, PIPE_HEIGHT);
     topPipe.setDepth(1);
     topPipe.body.setAllowGravity(false);
     topPipe.body.setVelocityX(PIPE_SPEED);
     topPipe.body.setImmovable(true);
 
-    // Bottom pipe — extends downward
+    // Bottom pipe — uses bottompipe.png from archive, origin at top so it extends downward
     const bottomY = randomPipeY + PIPE_HEIGHT + openingSpace;
     const bottomPipe = this.pipes.create(BOARD_W + 40, bottomY, 'pipeBottom');
     bottomPipe.setOrigin(0.5, 0);
     bottomPipe.setDisplaySize(PIPE_WIDTH, PIPE_HEIGHT);
-    bottomPipe.body.setSize(PIPE_WIDTH, PIPE_HEIGHT); // legacy: pipeWidth=64, pipeHeight=512
+    bottomPipe.body.setSize(PIPE_WIDTH, PIPE_HEIGHT);
     bottomPipe.setDepth(1);
     bottomPipe.body.setAllowGravity(false);
     bottomPipe.body.setVelocityX(PIPE_SPEED);
     bottomPipe.body.setImmovable(true);
 
+    // Shared scoring data — archive: score += 0.5 per pipe
     const pair = { scored: false };
     topPipe.pipeData = pair;
     bottomPipe.pipeData = pair;
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  //  PRE-GAME BOB
-  // ═══════════════════════════════════════════════════════════════════
-
-  preGameBob() {
-    this.bobTween = this.tweens.add({
-      targets: this.bird,
-      y: this.bird.y + 10,
-      duration: 700,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  //  UPDATE LOOP
+  //  UPDATE LOOP — matches archive update()
   // ═══════════════════════════════════════════════════════════════════
 
   update(_time, delta) {
     // Ground scroll
     this.groundTile.tilePositionX += 1.2;
 
-    // Bird wing animation  (cycle frames every ~100ms)
+    // Bird wing animation — cycle frames every ~100ms
     if (this.isPlaying || !this.isGameOver) {
       this.birdFrameTimer += delta;
       if (this.birdFrameTimer >= 100) {
@@ -406,42 +278,42 @@ export class GameScene extends Phaser.Scene {
 
     if (!this.isPlaying) return;
 
-    // Bird tilt
+    // Bird tilt based on velocity
     const vy = this.bird.body.velocity.y;
     this.bird.angle = Phaser.Math.Clamp(vy * 0.1, -25, 90);
 
-    // Ceiling clamp — matches docs: Math.max(bird.y + velocityY, 0)
+    // Ceiling clamp — archive: Math.max(bird.y + velocityY, 0)
     const birdHalfH = this.bird.displayHeight / 2;
     if (this.bird.y - birdHalfH < 0) {
       this.bird.y = birdHalfH;
       if (this.bird.body.velocity.y < 0) this.bird.body.velocity.y = 0;
     }
 
-    // Floor check — bird bottom edge hits ground top  (docs: bird.y > board.height)
+    // Floor check — archive: bird.y > board.height
     if (this.bird.y + birdHalfH > BOARD_H - GROUND_H) {
       this.endGame();
       return;
     }
 
-    // Pipe spawner  (docs: setInterval 1500ms)
+    // Pipe spawner — archive: setInterval(placePipes, 1500)
     this.pipeTimer += delta;
     if (this.pipeTimer >= PIPE_SPAWN_MS) {
       this.pipeTimer -= PIPE_SPAWN_MS;
       this.spawnPipePair();
     }
 
-    // Pipe cleanup + scoring  (docs: score += 0.5 per pipe)
+    // Pipe cleanup + scoring — archive logic
     const children = this.pipes.getChildren();
     for (let i = children.length - 1; i >= 0; i--) {
       const pipe = children[i];
 
-      // Cleanup off-screen pipes  (docs: pipeArray[0].x < -pipeWidth)
+      // Cleanup off-screen — archive: pipeArray[0].x < -pipeWidth
       if (pipe.x < -PIPE_WIDTH - 20) {
         pipe.destroy();
         continue;
       }
 
-      // Scoring  (docs: bird.x > pipe.x + pipe.width, score += 0.5)
+      // Scoring — archive: bird.x > pipe.x + pipe.width, score += 0.5
       if (
         pipe.pipeData &&
         !pipe.pipeData.scored &&
@@ -450,16 +322,16 @@ export class GameScene extends Phaser.Scene {
         pipe.pipeData.scored = true;
         this.score += 0.5;
 
-        // SFX on whole-number scores (each full pipe pair)
-        if (this.score === Math.floor(this.score) && this.sfx.score) {
-          this.sfx.score();
+        // SFX on whole-number scores — archive point sound
+        if (this.score === Math.floor(this.score) && this.sfxScore) {
+          this.sfxScore.play();
         }
 
         this.game.events.emit('update-score', Math.floor(this.score));
       }
     }
 
-    // Collision  (docs: AABB detectCollision)
+    // Collision — archive: detectCollision (AABB)
     this.physics.overlap(this.bird, this.pipes, () => {
       this.endGame();
     });
