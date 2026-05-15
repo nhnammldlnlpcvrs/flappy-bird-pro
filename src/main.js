@@ -23,8 +23,6 @@ const config = {
 
 const game = new Phaser.Game(config);
 
-// ─── DOM refs ────────────────────────────────────────────────────────
-
 const $ = (sel) => document.querySelector(sel);
 
 const startScreen = $('#start-screen');
