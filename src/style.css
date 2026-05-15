@@ -10,7 +10,7 @@ html, body {
   overflow: hidden;
   height: 100%;
   background: #000;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Courier New', Courier, monospace;
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
@@ -45,13 +45,15 @@ html, body {
 }
 
 .btn {
-  padding: 0.75rem 2rem;
+  padding: 0.65rem 2.25rem;
   font-weight: 700;
-  border-radius: 9999px;
-  border: none;
-  transition: transform 0.1s, box-shadow 0.1s, background 0.15s;
-  font-size: 1.125rem;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  transition: transform 0.1s, background 0.15s, border-color 0.15s;
+  font-size: 1rem;
   outline: none;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.1em;
 }
 
 .btn:active {
@@ -59,19 +61,19 @@ html, body {
 }
 
 .btn-start {
-  background: #FACC15;
-  color: #1a1a1a;
-  box-shadow: 0 4px 0 0 #B8860B;
+  background: #FFD700;
+  color: #000;
+  border-color: #B8860B;
 }
 
 .btn-start:hover {
-  background: #FDE047;
+  background: #FFED4A;
 }
 
 .btn-restart {
   background: #22C55E;
   color: #fff;
-  box-shadow: 0 4px 0 0 #15803D;
+  border-color: #15803D;
 }
 
 .btn-restart:hover {

@@ -3,10 +3,10 @@ import { GameScene } from './game/GameScene.js';
 
 const config = {
   type: Phaser.AUTO,
-  width: 400,
-  height: 600,
+  width: 360,
+  height: 640,
   parent: 'game-container',
-  backgroundColor: '#4EC0CA',
+  backgroundColor: '#000000',
   physics: {
     default: 'arcade',
     arcade: {
@@ -40,7 +40,6 @@ let bestScore = 0;
 try {
   bestScore = parseInt(localStorage.getItem('flappyBirdProBest') || '0', 10) || 0;
 } catch (_) { /* localStorage unavailable */ }
-
 bestScoreEl.textContent = bestScore;
 
 // ─── State helpers ───────────────────────────────────────────────────
@@ -91,4 +90,11 @@ game.events.on('update-score', (score) => {
 
 game.events.on('game-over', (score) => {
   showGameOver(score);
+});
+
+// ─── Keyboard restart while game-over modal is visible ──────────────
+
+game.events.on('restart-game', () => {
+  showPlaying();
+  game.events.emit('start-game');
 });

@@ -11,37 +11,32 @@
     <div id="game-container">
       <!-- Start Screen -->
       <div id="start-screen" class="game-ui flex flex-col items-center gap-5">
-        <h1 class="text-5xl font-black text-white tracking-wider score-text">FLAPPY BIRD</h1>
-        <p class="text-white/70 text-lg">PRO</p>
-        <button id="start-btn" class="btn btn-start mt-4">Start Game</button>
-        <p class="text-white/50 text-sm mt-2">Tap, Click, or press Space to fly</p>
+        <h1 class="text-4xl font-black text-white tracking-widest score-text">FLAPPY BIRD</h1>
+        <p class="text-white/60 text-base tracking-widest">PRO</p>
+        <button id="start-btn" class="btn btn-start mt-6">START</button>
+        <p class="text-white/40 text-xs mt-3 font-mono">Press Space or Tap to fly</p>
       </div>
 
       <!-- Score Display -->
       <div id="score-display" class="game-ui top-8 hidden">
-        <span id="score" class="text-6xl font-black text-white score-text">0</span>
-      </div>
-
-      <!-- Get Ready -->
-      <div id="get-ready" class="game-ui hidden">
-        <span class="text-3xl font-bold text-white score-text">Get Ready!</span>
+        <span id="score" class="text-7xl font-black text-white score-text">0</span>
       </div>
 
       <!-- Game Over Modal -->
       <div id="game-over-modal" class="game-ui hidden">
-        <div class="bg-black/75 backdrop-blur-sm rounded-2xl px-10 py-8 flex flex-col items-center gap-3 border border-white/10">
-          <h2 class="text-3xl font-black text-white">Game Over</h2>
+        <div class="bg-black/80 backdrop-blur-sm rounded-2xl px-10 py-8 flex flex-col items-center gap-3 border-2 border-white/15">
+          <h2 class="text-3xl font-black text-white tracking-wider">GAME OVER</h2>
           <div class="flex gap-8 my-2">
             <div class="text-center">
-              <p class="text-white/60 text-sm">Score</p>
-              <p id="final-score" class="text-3xl font-bold text-white">0</p>
+              <p class="text-white/50 text-xs tracking-widest uppercase">Score</p>
+              <p id="final-score" class="text-4xl font-black text-white">0</p>
             </div>
             <div class="text-center">
-              <p class="text-white/60 text-sm">Best</p>
-              <p id="best-score" class="text-3xl font-bold text-yellow-400">0</p>
+              <p class="text-white/50 text-xs tracking-widest uppercase">Best</p>
+              <p id="best-score" class="text-4xl font-black text-yellow-400">0</p>
             </div>
           </div>
-          <button id="restart-btn" class="btn btn-restart mt-2">Play Again</button>
+          <button id="restart-btn" class="btn btn-restart mt-2">PLAY AGAIN</button>
         </div>
       </div>
     </div>
