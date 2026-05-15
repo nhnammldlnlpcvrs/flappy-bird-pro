@@ -22,12 +22,18 @@ export class GameScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════
 
   preload() {
+    // Bird — legacy flappybird.png + animated frames (enhancement)
+    this.load.image('bird', 'assets/flappybird.png');
     this.load.image('bird0', 'assets/flappybird0.png');
     this.load.image('bird1', 'assets/flappybird1.png');
     this.load.image('bird2', 'assets/flappybird2.png');
     this.load.image('bird3', 'assets/flappybird3.png');
-    this.load.image('pipeBody', 'assets/bottompipe.png');
+    // Pipes — toppipe.png not in assets; bottompipe.png flipped for top
+    this.load.image('pipeTop', 'assets/bottompipe.png');
+    this.load.image('pipeBottom', 'assets/bottompipe.png');
+    // Background
     this.load.image('background', 'assets/flappybirdbg.png');
+    // BGM
     this.load.audio('bgm', 'assets/bgm_mario.mp3');
   }
 
@@ -52,10 +58,10 @@ export class GameScene extends Phaser.Scene {
     this.bird.setDisplaySize(34, 24);
     this.bird.setDepth(3);
     this.bird.setCollideWorldBounds(false);
-    this.bird.body.setSize(24, 18);
+    this.bird.body.setSize(34, 24);    // legacy: birdWidth=34, birdHeight=24
     this.bird.body.setOffset(
-      (this.bird.width - 24) / 2,
-      (this.bird.height - 18) / 2
+      (this.bird.width - 34) / 2,
+      (this.bird.height - 24) / 2
     );
     this.bird.body.allowGravity = false;
 
@@ -93,7 +99,7 @@ export class GameScene extends Phaser.Scene {
     this.groundTile = this.add.tileSprite(
       BOARD_W / 2, BOARD_H - GROUND_H / 2,
       BOARD_W, GROUND_H,
-      'pipeBody'
+      'pipeBottom'
     );
     this.groundTile.setDisplaySize(BOARD_W, GROUND_H);
     this.groundTile.setDepth(2);
@@ -279,6 +285,8 @@ export class GameScene extends Phaser.Scene {
 
     this.bird.setPosition(BIRD_X, BOARD_H / 2);
     this.bird.setAngle(0);
+    this.bird.clearTint();
+    this.bird.setTexture('bird0');
     this.bird.setDisplaySize(34, 24);
     this.bird.body.allowGravity = true;
     this.bird.body.setGravityY(GRAVITY);
@@ -335,11 +343,12 @@ export class GameScene extends Phaser.Scene {
     const randomPipeY = -PIPE_HEIGHT / 4 - Math.random() * (PIPE_HEIGHT / 2);
     const openingSpace = PIPE_GAP; // 160
 
-    // Top pipe — flipped, extends upward
-    const topPipe = this.pipes.create(BOARD_W + 40, randomPipeY, 'pipeBody');
+    // Top pipe — flipped bottompipe.png, extends upward
+    const topPipe = this.pipes.create(BOARD_W + 40, randomPipeY, 'pipeTop');
     topPipe.setOrigin(0.5, 1);
     topPipe.setFlipY(true);
     topPipe.setDisplaySize(PIPE_WIDTH, PIPE_HEIGHT);
+    topPipe.body.setSize(PIPE_WIDTH, PIPE_HEIGHT);    // legacy: pipeWidth=64, pipeHeight=512
     topPipe.setDepth(1);
     topPipe.body.setAllowGravity(false);
     topPipe.body.setVelocityX(PIPE_SPEED);
@@ -347,9 +356,10 @@ export class GameScene extends Phaser.Scene {
 
     // Bottom pipe — extends downward
     const bottomY = randomPipeY + PIPE_HEIGHT + openingSpace;
-    const bottomPipe = this.pipes.create(BOARD_W + 40, bottomY, 'pipeBody');
+    const bottomPipe = this.pipes.create(BOARD_W + 40, bottomY, 'pipeBottom');
     bottomPipe.setOrigin(0.5, 0);
     bottomPipe.setDisplaySize(PIPE_WIDTH, PIPE_HEIGHT);
+    bottomPipe.body.setSize(PIPE_WIDTH, PIPE_HEIGHT); // legacy: pipeWidth=64, pipeHeight=512
     bottomPipe.setDepth(1);
     bottomPipe.body.setAllowGravity(false);
     bottomPipe.body.setVelocityX(PIPE_SPEED);
