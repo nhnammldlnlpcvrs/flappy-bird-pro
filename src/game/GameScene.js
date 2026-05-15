@@ -7,7 +7,7 @@ const PIPE_WIDTH = 64;
 const PIPE_HEIGHT = 512;
 const PIPE_GAP = BOARD_H / 4; // 160 — matches docs openingSpace
 const PIPE_SPEED = -120; // -2 px/frame at 60fps
-const GRAVITY = 900;
+const GRAVITY = 1400; // matches docs: gravity=0.4/frame at 60fps ≈ 1464px/s²
 const FLAP_VELOCITY = -360;
 const BIRD_X = BOARD_W / 8; // 45 — matches docs
 const PIPE_SPAWN_MS = 1500;
@@ -271,6 +271,12 @@ export class GameScene extends Phaser.Scene {
     this.isPlaying = true;
     this.isGameOver = false;
 
+    // Cancel pending game-over modal if player restarted before it fired
+    if (this.gameOverTimer) {
+      this.gameOverTimer.remove();
+      this.gameOverTimer = null;
+    }
+
     this.bird.setPosition(BIRD_X, BOARD_H / 2);
     this.bird.setAngle(0);
     this.bird.setDisplaySize(34, 24);
@@ -313,7 +319,7 @@ export class GameScene extends Phaser.Scene {
       p.body.setVelocity(0, 0);
     });
 
-    this.time.delayedCall(500, () => {
+    this.gameOverTimer = this.time.delayedCall(500, () => {
       this.game.events.emit('game-over', this.score);
     });
   }
@@ -394,8 +400,15 @@ export class GameScene extends Phaser.Scene {
     const vy = this.bird.body.velocity.y;
     this.bird.angle = Phaser.Math.Clamp(vy * 0.1, -25, 90);
 
-    // Floor check  (docs: bird.y > board.height → game over)
-    if (this.bird.y >= BOARD_H - 10 || this.bird.y <= -20) {
+    // Ceiling clamp — matches docs: Math.max(bird.y + velocityY, 0)
+    const birdHalfH = this.bird.displayHeight / 2;
+    if (this.bird.y - birdHalfH < 0) {
+      this.bird.y = birdHalfH;
+      if (this.bird.body.velocity.y < 0) this.bird.body.velocity.y = 0;
+    }
+
+    // Floor check — bird bottom edge hits ground top  (docs: bird.y > board.height)
+    if (this.bird.y + birdHalfH > BOARD_H - GROUND_H) {
       this.endGame();
       return;
     }
