@@ -13,7 +13,7 @@ let birdY = boardHeight/2;
 let birdImg;
 
 let bird = {
-    x : birdX,  
+    x : birdX,
     y : birdY,
     width : birdWidth,
     height : birdHeight
